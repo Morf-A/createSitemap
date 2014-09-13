@@ -18,9 +18,8 @@ $jsonSiteMap = file_get_contents(
     ])
 );
 
-
+// Преобразуем json в массив uri
 $baseUrl = 'http://site.ru/';
-//$uriList = [];
 
 $arraySiteMap = json_decode($jsonSiteMap);
 
@@ -39,8 +38,25 @@ function createUriList($tempSiteMap, $path){
     return $uriList;
 }
 
-
 $uriList = array_merge([$baseUrl], createUriList($arraySiteMap, $baseUrl));
 
-print_r($uriList);
+// Запишем список uri в виде XML
 
+$xmlSiteMap = new SimpleXMLElement(
+        '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>'
+);
+
+foreach ($uriList as $key => $uri) {
+    $url = $xmlSiteMap->addChild('url');
+
+    $url->addChild('loc', $uri);
+    $url->addChild('lastmod', '2005-01-01');
+    $url->addChild('changefreq', 'monthly');
+    $url->addChild('priority', '0.7');
+}
+
+// Сохранение в файл
+file_put_contents(
+    'Sitemap.xml',
+    $xmlSiteMap->asXml()
+);
