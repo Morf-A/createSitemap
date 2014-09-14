@@ -2,9 +2,9 @@
 
 class Sitemap {
 
-    private $host          = 'http://localhost/sitemap-data/';
-    private $login         = 'demo';
-    private $password      = '123';
+    private $host;
+    private $login;
+    private $password;
 
     private $sitemapString = null;
 
@@ -15,8 +15,7 @@ class Sitemap {
         $this->password = $password;
 
         set_error_handler(function ($errno, $errstr, $errfile, $errline){
-            echo 'An error has occurred:' .  $errstr;
-            die;
+            throw new Exception('An error has occurred: ' .  $errstr);
         });
     }
 
@@ -47,8 +46,7 @@ class Sitemap {
                 $uriList[] = $newPath;
                 $uriList = array_merge($uriList, $this->createUriList($child, $newPath));
             }else{
-                echo 'File: ' . __FILE__ . ' Line:' . __LINE__ . ' An error has occurred: Bad JSON node';
-                die;
+                throw new Exception('Bad JSON node');
             }
         }
         return $uriList;
@@ -76,8 +74,7 @@ class Sitemap {
 
             // Проверка преобраования в массив
             if(is_null($arraySiteMap)){
-                echo 'File: ' . __FILE__ . ' Line:' . __LINE__ . ' An error has occurred: Could not be converted JSON to array';
-                die;
+                throw new Exception('Could not be converted JSON to array');
             }
 
             $baseUrl = 'http://site.ru/';
