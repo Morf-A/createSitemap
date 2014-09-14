@@ -5,7 +5,18 @@ $host     = 'http://localhost/sitemap-data/';
 $login    = 'demo';
 $password = '123';
 
+
+// Обработчик ошибок
+function myErrorHandler($errno, $errstr, $errfile, $errline)
+{
+    echo 'File: ' . __FILE__ . ' Line:' . __LINE__ . ' An error has occurred:' .  $errstr;
+    die;
+}
+
+set_error_handler('myErrorHandler');
+
 // Получаем json-карту сайта
+
 $jsonSiteMap = file_get_contents(
     $host,
     false,
@@ -18,21 +29,31 @@ $jsonSiteMap = file_get_contents(
     ])
 );
 
+
 // Преобразуем json в массив uri
+
+$arraySiteMap = json_decode($jsonSiteMap, true, 512, JSON_BIGINT_AS_STRING);
+
+// Проверка преобраования в массив
+if(is_null($arraySiteMap)){
+    echo 'File: ' . __FILE__ . ' Line:' . __LINE__ . ' An error has occurred: Could not be converted JSON to array';
+    die;
+}
+
 $baseUrl = 'http://site.ru/';
-
-$arraySiteMap = json_decode($jsonSiteMap);
-
 function createUriList($tempSiteMap, $path){
     $uriList = [];
     foreach ($tempSiteMap as $parent => $child) {
 
         if(is_string($child)){
             $uriList[] = $path . $child . '.html';
-        }else{
+        }elseif(is_array($child)){
             $newPath = $path . $parent . '/';
             $uriList[] = $newPath;
             $uriList = array_merge($uriList, createUriList($child, $newPath));
+        }else{
+            echo 'File: ' . __FILE__ . ' Line:' . __LINE__ . ' An error has occurred: Bad JSON node';
+            die;
         }
     }
     return $uriList;
@@ -55,8 +76,13 @@ foreach ($uriList as $key => $uri) {
     $url->addChild('priority', '0.7');
 }
 
+// Кодировка и маскирование.
+
+// $resultXML = htmlspecialchars(utf8_encode($xmlSiteMap->asXml()));
+$resultXML = utf8_encode($xmlSiteMap->asXml());
+
 // Сохранение в файл
 file_put_contents(
     'Sitemap.xml',
-    $xmlSiteMap->asXml()
+    $resultXML
 );
