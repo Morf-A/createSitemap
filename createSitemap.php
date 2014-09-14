@@ -9,14 +9,26 @@ $password = '123';
 // Обработчик ошибок
 function myErrorHandler($errno, $errstr, $errfile, $errline)
 {
-    echo 'File: ' . __FILE__ . ' Line:' . __LINE__ . ' An error has occurred:' .  $errstr;
+    echo 'An error has occurred:' .  $errstr;
     die;
 }
-
 set_error_handler('myErrorHandler');
 
-// Получаем json-карту сайта
 
+// Правильное кодирование URL
+function my_encode($string) {
+    return str_replace(
+        ['%21', '%2A', '%27', '%28', '%29', '%3B', '%3A', '%40', '%26', '%3D', '%2B', '%24', '%2C', '%2F', '%3F', '%25', '%23', '%5B', '%5D'],
+        ['!', '*', "'", "(", ")", ";", ":", "@", "&", "=", "+", "$", ",", "/", "?", "%", "#", "[", "]"],
+        rawurlencode(htmlspecialchars(
+            $string,
+            ENT_QUOTES | ENT_XML1
+        ))
+    );
+}
+
+
+// Получаем json-карту сайта
 $jsonSiteMap = file_get_contents(
     $host,
     false,
@@ -31,7 +43,6 @@ $jsonSiteMap = file_get_contents(
 
 
 // Преобразуем json в массив uri
-
 $arraySiteMap = json_decode($jsonSiteMap, true, 512, JSON_BIGINT_AS_STRING);
 
 // Проверка преобраования в массив
@@ -46,9 +57,11 @@ function createUriList($tempSiteMap, $path){
     foreach ($tempSiteMap as $parent => $child) {
 
         if(is_string($child)){
-            $uriList[] = $path . $child . '.html';
+            $uriList[] = $path .
+                my_encode($child) .
+                '.html';
         }elseif(is_array($child)){
-            $newPath = $path . $parent . '/';
+            $newPath = $path . my_encode($parent) . '/';
             $uriList[] = $newPath;
             $uriList = array_merge($uriList, createUriList($child, $newPath));
         }else{
@@ -61,28 +74,22 @@ function createUriList($tempSiteMap, $path){
 
 $uriList = array_merge([$baseUrl], createUriList($arraySiteMap, $baseUrl));
 
+
 // Запишем список uri в виде XML
-
-$xmlSiteMap = new SimpleXMLElement(
-        '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>'
-);
-
+$xmlSiteMap = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
 foreach ($uriList as $key => $uri) {
-    $url = $xmlSiteMap->addChild('url');
-
-    $url->addChild('loc', $uri);
-    $url->addChild('lastmod', '2005-01-01');
-    $url->addChild('changefreq', 'monthly');
-    $url->addChild('priority', '0.7');
+    $xmlSiteMap .= '<url>';
+    $xmlSiteMap .= '<loc>' . $uri . '</loc>';
+    $xmlSiteMap .= '<lastmod>' . '2005-01-01' . '</lastmod>';
+    $xmlSiteMap .= '<changefreq>' . 'monthly' . '</changefreq>';
+    $xmlSiteMap .= '<priority>' . '0.7' . '</priority>';
+    $xmlSiteMap .= '</url>';
 }
+$xmlSiteMap .= '</urlset>';
 
-// Кодировка и маскирование.
-
-// $resultXML = htmlspecialchars(utf8_encode($xmlSiteMap->asXml()));
-$resultXML = utf8_encode($xmlSiteMap->asXml());
 
 // Сохранение в файл
 file_put_contents(
     'Sitemap.xml',
-    $resultXML
+    $xmlSiteMap
 );
